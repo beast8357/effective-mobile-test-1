@@ -94,4 +94,3 @@ curl 'http://localhost:8080/subscriptions/total?from=01-2025&to=12-2025&user_id=
     ├── repository/               # pgx + миграционный раннер
     └── handler/                  # HTTP, валидация, роутинг
 ```
-# effective-mobile-test-1

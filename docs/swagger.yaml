@@ -1,0 +1,220 @@
+openapi: 3.0.3
+info:
+  title: Subscriptions API
+  description: REST service for aggregating data about user online subscriptions.
+  version: 1.0.0
+  contact:
+    name: Effective Mobile test assignment
+
+servers:
+  - url: http://localhost:8080
+    description: Local
+
+tags:
+  - name: subscriptions
+    description: CRUDL operations on subscription records
+  - name: aggregation
+    description: Aggregated reporting
+
+paths:
+  /subscriptions:
+    post:
+      tags: [subscriptions]
+      summary: Create a subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRequest'
+            examples:
+              example:
+                value:
+                  service_name: "Yandex Plus"
+                  price: 400
+                  user_id: "60601fee-2bf1-4721-ae6f-7636e79a0cba"
+                  start_date: "07-2025"
+      responses:
+        '201':
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [subscriptions]
+      summary: List subscriptions
+      parameters:
+        - in: query
+          name: user_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: service_name
+          description: Substring match (case-insensitive)
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: A list of subscriptions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Subscription' }
+                  count:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /subscriptions/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [subscriptions]
+      summary: Get one subscription
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [subscriptions]
+      summary: Replace a subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubscriptionRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [subscriptions]
+      summary: Delete a subscription
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /subscriptions/total:
+    get:
+      tags: [aggregation]
+      summary: Total subscription cost for a period
+      description: |
+        Returns the sum of `price * months_active_within_period` over all
+        subscriptions whose lifetime intersects [from, to]. Optional filters
+        narrow the calculation to a single user or a service-name substring.
+      parameters:
+        - in: query
+          name: from
+          required: true
+          description: Period start (inclusive), `MM-YYYY`
+          schema: { type: string, example: "01-2025" }
+        - in: query
+          name: to
+          required: true
+          description: Period end (inclusive), `MM-YYYY`
+          schema: { type: string, example: "12-2025" }
+        - in: query
+          name: user_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: service_name
+          schema: { type: string }
+      responses:
+        '200':
+          description: Aggregated total in rubles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  from:  { type: string, example: "01-2025" }
+                  to:    { type: string, example: "12-2025" }
+                  total: { type: integer, example: 4800 }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /healthz:
+    get:
+      summary: Liveness probe
+      tags: []
+      responses:
+        '200':
+          description: Service is up
+
+components:
+  schemas:
+    Subscription:
+      type: object
+      required: [id, service_name, price, user_id, start_date]
+      properties:
+        id:           { type: string, format: uuid }
+        service_name: { type: string, example: "Yandex Plus" }
+        price:        { type: integer, example: 400, description: "Monthly cost in rubles (integer)" }
+        user_id:      { type: string, format: uuid }
+        start_date:   { type: string, example: "07-2025", description: "MM-YYYY" }
+        end_date:     { type: string, example: "12-2025", description: "MM-YYYY, optional", nullable: true }
+
+    SubscriptionRequest:
+      type: object
+      required: [service_name, price, user_id, start_date]
+      properties:
+        service_name: { type: string }
+        price:        { type: integer, minimum: 0 }
+        user_id:      { type: string, format: uuid }
+        start_date:   { type: string, example: "07-2025" }
+        end_date:     { type: string, example: "12-2025", nullable: true }
+
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

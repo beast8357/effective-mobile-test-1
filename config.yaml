@@ -1,0 +1,15 @@
+http:
+  port: "8080"
+  read_timeout: 10s
+  write_timeout: 10s
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  name: "subscriptions"
+  sslmode: "disable"
+
+log:
+  level: "info"
