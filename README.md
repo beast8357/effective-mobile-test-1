@@ -31,7 +31,7 @@ docker compose up --build
 
 ## Локальный запуск (без docker)
 
-Нужен Go 1.22+ и поднятый PostgreSQL.
+Нужен Go 1.25+ и поднятый PostgreSQL.
 
 ```bash
 go mod tidy
